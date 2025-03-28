@@ -1,15 +1,18 @@
 import { useEffect, useState, useRef } from "react";
 import * as ort from "onnxruntime-web";
 
-// Загрузка модели
+// Загрузка ONNX-модели
 async function loadOnnxModel() {
   try {
+    ort.env.wasm.numThreads = 1;
+
     const session = await ort.InferenceSession.create(
       "https://dmitriywolf.github.io/test-onnnx/models/detector_documents_leyolo_n.onnx",
       {
         executionProviders: ["wasm"],
       }
     );
+
     console.log("[ONNX] Модель загружена");
     return session;
   } catch (err) {
@@ -18,23 +21,15 @@ async function loadOnnxModel() {
   }
 }
 
-// Один кадр инференса
-async function runInference(session, setCount) {
-  const dummyData = new Float32Array(1 * 3 * 320 * 320);
-  for (let i = 0; i < dummyData.length; i++) {
-    dummyData[i] = (i % 256) / 255;
-  }
-
-  const inputTensor = new ort.Tensor("float32", dummyData, [1, 3, 320, 320]);
-
+// Инференс для одного кадра
+async function runInference(session, tensor, setCount) {
   try {
     const t0 = performance.now();
-    const results = await session.run({ images: inputTensor });
+    const results = await session.run({ images: tensor });
     const t1 = performance.now();
 
     setCount((prev) => ({ c: prev.c + 1, t: t1 - t0 }));
 
-    // Очистка результатов
     for (const key in results) {
       delete results[key];
     }
@@ -43,34 +38,48 @@ async function runInference(session, setCount) {
   }
 }
 
-// Главный компонент
 function App() {
   const [count, setCount] = useState({ c: 0, t: 0 });
+  const [isLoading, setIsLoading] = useState(true); // 🔹 индикатор загрузки
+
+  const sessionRef = useRef(null);
   const animationFrameRef = useRef(null);
   const isInferenceRunningRef = useRef(false);
-  const sessionRef = useRef(null);
+  const lastInferenceTimeRef = useRef(0);
   const cancelledRef = useRef(false);
+  const dummyDataRef = useRef(new Float32Array(1 * 3 * 320 * 320));
+  const inferenceInterval = 100;
 
   useEffect(() => {
     cancelledRef.current = false;
 
     async function init() {
       const session = await loadOnnxModel();
-      if (session) {
-        sessionRef.current = session;
-        loop(); // стартуем цикл инференса
-      }
+      if (!session || cancelledRef.current) return;
+
+      sessionRef.current = session;
+      setIsLoading(false); // 🔹 модель загружена — скрываем индикатор
+      loop();
     }
 
-    // Цикл инференса по кадрам
     async function loop() {
       if (cancelledRef.current || !sessionRef.current) return;
 
-      if (!isInferenceRunningRef.current) {
+      const now = performance.now();
+      const enoughTimePassed =
+        now - lastInferenceTimeRef.current > inferenceInterval;
+
+      if (!isInferenceRunningRef.current && enoughTimePassed) {
         isInferenceRunningRef.current = true;
+        lastInferenceTimeRef.current = now;
 
-        await runInference(sessionRef.current, setCount);
+        const tensor = new ort.Tensor(
+          "float32",
+          dummyDataRef.current,
+          [1, 3, 320, 320]
+        );
 
+        await runInference(sessionRef.current, tensor, setCount);
         isInferenceRunningRef.current = false;
       }
 
@@ -88,7 +97,9 @@ function App() {
     };
   }, []);
 
-  return (
+  return isLoading ? (
+    <p>Loading...</p> // 🔹 пока модель грузится
+  ) : (
     <p>
       Inference №{count.c} | Time: {count.t.toFixed(2)} ms
     </p>

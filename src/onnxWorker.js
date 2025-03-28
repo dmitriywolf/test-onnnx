@@ -11,7 +11,7 @@ const dummyData = new Float32Array(1 * 3 * 320 * 320);
 async function init() {
   session = await ort.InferenceSession.create(
     "https://dmitriywolf.github.io/test-onnnx/models/detector_documents_leyolo_n.onnx",
-    { executionProviders: ["wasm"] }
+    { executionProviders: ["webgl", "wasm"] }
   );
   loop();
 }

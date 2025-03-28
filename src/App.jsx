@@ -16,11 +16,12 @@ function App() {
   const [memory, setMemory] = useState("0.00");
   const [loading, setLoading] = useState(true);
 
-  // Показ использования памяти (только в Chrome)
   const logMemory = () => {
     if (performance.memory) {
       const used = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2);
       setMemory(used);
+    } else {
+      setMemory("Not available");
     }
   };
 
@@ -43,15 +44,21 @@ function App() {
 
     async function loop() {
       while (!cancelledRef.current) {
-        const tensor = new ort.Tensor(
-          "float32",
-          dummyDataRef.current,
-          [1, 3, 320, 320]
-        );
+        let tensor = null;
+        let results = null;
 
         try {
-          const results = await sessionRef.current.run({ images: tensor });
-          Object.keys(results).forEach((k) => (results[k] = null));
+          tensor = new ort.Tensor(
+            "float32",
+            dummyDataRef.current,
+            [1, 3, 320, 320]
+          );
+          results = await sessionRef.current.run({ images: tensor });
+
+          // Очистка результатов
+          for (const key in results) {
+            results[key] = null;
+          }
 
           counterRef.current += 1;
           setCount(counterRef.current);
@@ -59,9 +66,14 @@ function App() {
         } catch (e) {
           console.error("Inference error", e);
           break;
-        }
+        } finally {
+          // Обнуляем всё вручную
+          results = null;
+          tensor = null;
 
-        await new Promise((r) => setTimeout(r, 400));
+          // Даём GC время на очистку
+          await new Promise((r) => setTimeout(r, 1000));
+        }
       }
     }
 

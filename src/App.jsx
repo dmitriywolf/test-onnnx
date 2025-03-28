@@ -10,6 +10,8 @@ async function loadOnnxModel() {
   );
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function App() {
   const sessionRef = useRef(null);
 
@@ -33,11 +35,15 @@ function App() {
       );
 
       const results = await sessionRef.current.run({ images: tensor });
-
-      // Очистка памяти тензоров!
-      Object.values(results).forEach((t) => t.dispose());
+      // ✅ явно освобождаем память (удаляем ссылки)
+      Object.keys(results).forEach((key) => {
+        results[key] = null;
+      });
 
       setCount((p) => p + 1);
+
+      // ✅ Пауза 200 мс, чтобы GC успел очистить память
+      await sleep(400);
 
       animationFrameRef.current = requestAnimationFrame(loop);
     }

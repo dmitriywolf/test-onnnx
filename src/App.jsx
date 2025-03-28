@@ -13,7 +13,7 @@ function App() {
     async function loadModelAndStartAnimation() {
       try {
         // Загрузка модели
-        session = await ort.InferenceSession.create("https://github.com/dmitriywolf/test-onnnx/models/model.onnx");
+        session = await ort.InferenceSession.create("https://dmitriywolf.github.io/test-onnnx/models/model.onnx");
 
         // Функция, выполняющая инференс на каждом кадре
         async function runFrame() {

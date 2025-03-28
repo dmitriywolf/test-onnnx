@@ -4,7 +4,6 @@ import { viteStaticCopy } from "vite-plugin-static-copy";
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/test-onnnx/', // замените на имя вашего репозитория
   plugins: [
     react(),
     viteStaticCopy({

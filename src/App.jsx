@@ -2,26 +2,27 @@ import { useState, useEffect, useRef } from "react";
 import * as ort from "onnxruntime-web";
 
 async function loadOnnxModel() {
-  ort.env.wasm.numThreads = 1;
-
   return await ort.InferenceSession.create(
-    "https://dmitriywolf.github.io/test-onnnx/models/detector_documents_leyolo_n.onnx",
+    "https://dmitriywolf.github.io/test-onnnx/models/best_uint8.onnx",
+    // "/models/best_uint8.onnx",
     { executionProviders: ["wasm"] }
   );
 }
 
 function App() {
   const sessionRef = useRef(null);
+
   const dummyDataRef = useRef(new Float32Array(1 * 3 * 320 * 320));
+
   const cancelledRef = useRef(false);
-  const timeoutRef = useRef(null);
+  const animationFrameRef = useRef(null);
 
   const [count, setCount] = useState(0);
 
   useEffect(() => {
     cancelledRef.current = false;
 
-    async function runInference() {
+    async function loop() {
       if (cancelledRef.current || !sessionRef.current) return;
 
       const tensor = new ort.Tensor(
@@ -31,13 +32,13 @@ function App() {
       );
 
       let results = await sessionRef.current.run({ images: tensor });
+
       // eslint-disable-next-line no-unused-vars
       results = null;
 
       setCount((p) => p + 1);
 
-      // ✅ Следующий запуск строго через 1 секунду после завершения
-      timeoutRef.current = setTimeout(runInference, 500);
+      animationFrameRef.current = requestAnimationFrame(loop);
     }
 
     async function init() {
@@ -45,14 +46,15 @@ function App() {
 
       if (!sessionRef.current || cancelledRef.current) return;
 
-      runInference(); // Первый запуск сразу
+      loop();
     }
 
     init();
 
     return () => {
       cancelledRef.current = true;
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (animationFrameRef.current)
+        cancelAnimationFrame(animationFrameRef.current);
       sessionRef.current = null;
     };
   }, []);
@@ -61,72 +63,3 @@ function App() {
 }
 
 export default App;
-
-// ==================================================== =============================
-// import { useState, useEffect, useRef } from "react";
-// import * as ort from "onnxruntime-web";
-
-// async function loadOnnxModel() {
-//   ort.env.wasm.numThreads = 1;
-
-//   return await ort.InferenceSession.create(
-//     "https://dmitriywolf.github.io/test-onnnx/models/detector_documents_leyolo_n.onnx",
-//     { executionProviders: ["wasm"] }
-//   );
-// }
-
-// function App() {
-//   const sessionRef = useRef(null);
-
-//   const dummyDataRef = useRef(new Float32Array(1 * 3 * 320 * 320));
-
-//   const cancelledRef = useRef(false);
-//   const animationFrameRef = useRef(null);
-
-//   const [count, setCount] = useState(0);
-
-//   useEffect(() => {
-//     cancelledRef.current = false;
-
-//     async function loop() {
-//       if (cancelledRef.current || !sessionRef.current) return;
-
-//       const tensor = new ort.Tensor(
-//         "float32",
-//         dummyDataRef.current,
-//         [1, 3, 320, 320]
-//       );
-
-//       let results = await sessionRef.current.run({ images: tensor });
-
-//       // eslint-disable-next-line no-unused-vars
-//       results = null;
-
-//       setCount((p) => p + 1);
-
-//       animationFrameRef.current = requestAnimationFrame(loop);
-//     }
-
-//     async function init() {
-//       sessionRef.current = await loadOnnxModel();
-
-//       if (!sessionRef.current || cancelledRef.current) return;
-
-//       loop();
-//     }
-
-//     init();
-
-//     return () => {
-//       cancelledRef.current = true;
-//       if (animationFrameRef.current)
-//         cancelAnimationFrame(animationFrameRef.current);
-//       sessionRef.current = null;
-//     };
-//   }, []);
-
-//   return <p>Inference # {count}</p>;
-// }
-
-// export default App;
-// ==================================================== =============================

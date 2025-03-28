@@ -2,10 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import * as ort from "onnxruntime-web";
 
 async function loadOnnxModel() {
-  ort.env.wasm.numThreads = 1;
-  ort.env.wasm.simd = true;
-  ort.env.wasm.proxy = true;
-
   try {
     return await ort.InferenceSession.create(
       "https://dmitriywolf.github.io/test-onnnx/models/detector_documents_leyolo_n.onnx",

@@ -4,7 +4,7 @@ import { viteStaticCopy } from "vite-plugin-static-copy";
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/test-onnnx/',
+  // base: '/test-onnnx/',
   plugins: [
     react(),
     viteStaticCopy({
@@ -16,4 +16,7 @@ export default defineConfig({
       ],
     }),
   ],
+  worker: {
+    format: "es", // ES modules
+  },
 });

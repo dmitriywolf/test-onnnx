@@ -1,26 +1,3 @@
-// import { useEffect, useState } from "react";
-
-// function App() {
-//   const [count, setCount] = useState(0);
-
-//   useEffect(() => {
-//     // ✅ правильный способ в Vite
-//     const worker = new Worker(new URL("./onnxWorker.js", import.meta.url), {
-//       type: "module",
-//     });
-
-//     worker.onmessage = () => {
-//       setCount((prev) => prev + 1);
-//     };
-
-//     return () => worker.terminate();
-//   }, []);
-
-//   return <p>Inference # {count}</p>;
-// }
-
-// export default App;
-
 import { useState, useEffect, useRef } from "react";
 import * as ort from "onnxruntime-web";
 
@@ -35,18 +12,16 @@ async function loadOnnxModel() {
 
 function App() {
   const sessionRef = useRef(null);
-
   const dummyDataRef = useRef(new Float32Array(1 * 3 * 320 * 320));
-
   const cancelledRef = useRef(false);
-  const animationFrameRef = useRef(null);
+  const timeoutRef = useRef(null);
 
   const [count, setCount] = useState(0);
 
   useEffect(() => {
     cancelledRef.current = false;
 
-    async function loop() {
+    async function runInference() {
       if (cancelledRef.current || !sessionRef.current) return;
 
       const tensor = new ort.Tensor(
@@ -56,13 +31,13 @@ function App() {
       );
 
       let results = await sessionRef.current.run({ images: tensor });
-
       // eslint-disable-next-line no-unused-vars
       results = null;
 
       setCount((p) => p + 1);
 
-      animationFrameRef.current = requestAnimationFrame(loop);
+      // ✅ Следующий запуск строго через 1 секунду после завершения
+      timeoutRef.current = setTimeout(runInference, 500);
     }
 
     async function init() {
@@ -70,15 +45,14 @@ function App() {
 
       if (!sessionRef.current || cancelledRef.current) return;
 
-      loop();
+      runInference(); // Первый запуск сразу
     }
 
     init();
 
     return () => {
       cancelledRef.current = true;
-      if (animationFrameRef.current)
-        cancelAnimationFrame(animationFrameRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       sessionRef.current = null;
     };
   }, []);
@@ -87,3 +61,72 @@ function App() {
 }
 
 export default App;
+
+// ==================================================== =============================
+// import { useState, useEffect, useRef } from "react";
+// import * as ort from "onnxruntime-web";
+
+// async function loadOnnxModel() {
+//   ort.env.wasm.numThreads = 1;
+
+//   return await ort.InferenceSession.create(
+//     "https://dmitriywolf.github.io/test-onnnx/models/detector_documents_leyolo_n.onnx",
+//     { executionProviders: ["wasm"] }
+//   );
+// }
+
+// function App() {
+//   const sessionRef = useRef(null);
+
+//   const dummyDataRef = useRef(new Float32Array(1 * 3 * 320 * 320));
+
+//   const cancelledRef = useRef(false);
+//   const animationFrameRef = useRef(null);
+
+//   const [count, setCount] = useState(0);
+
+//   useEffect(() => {
+//     cancelledRef.current = false;
+
+//     async function loop() {
+//       if (cancelledRef.current || !sessionRef.current) return;
+
+//       const tensor = new ort.Tensor(
+//         "float32",
+//         dummyDataRef.current,
+//         [1, 3, 320, 320]
+//       );
+
+//       let results = await sessionRef.current.run({ images: tensor });
+
+//       // eslint-disable-next-line no-unused-vars
+//       results = null;
+
+//       setCount((p) => p + 1);
+
+//       animationFrameRef.current = requestAnimationFrame(loop);
+//     }
+
+//     async function init() {
+//       sessionRef.current = await loadOnnxModel();
+
+//       if (!sessionRef.current || cancelledRef.current) return;
+
+//       loop();
+//     }
+
+//     init();
+
+//     return () => {
+//       cancelledRef.current = true;
+//       if (animationFrameRef.current)
+//         cancelAnimationFrame(animationFrameRef.current);
+//       sessionRef.current = null;
+//     };
+//   }, []);
+
+//   return <p>Inference # {count}</p>;
+// }
+
+// export default App;
+// ==================================================== =============================

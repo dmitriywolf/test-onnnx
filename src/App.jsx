@@ -72,7 +72,7 @@ function App() {
           tensor = null;
 
           // Даём GC время на очистку
-          await new Promise((r) => setTimeout(r, 1000));
+          await new Promise((r) => setTimeout(r, 3000));
         }
       }
     }

@@ -32,7 +32,10 @@ function App() {
         [1, 3, 320, 320]
       );
 
-      await sessionRef.current.run({ images: tensor });
+      const results = await sessionRef.current.run({ images: tensor });
+
+      // Очистка памяти тензоров!
+      Object.values(results).forEach((t) => t.dispose());
 
       setCount((p) => p + 1);
 

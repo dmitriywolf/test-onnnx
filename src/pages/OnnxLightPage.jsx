@@ -12,15 +12,15 @@ async function loadOnnxModel() {
 // Пауза через промис
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Вывод JS Heap (Chrome)
-const logMemory = () => {
+// Получение использования JS Heap (в MB)
+const getMemoryUsage = () => {
   if (performance.memory) {
-    const used = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2);
-    console.log(`Used JS Heap: ${used} MB`);
+    return +(performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2);
   }
+  return null;
 };
 
-function App() {
+export default function OnnxLightPage() {
   const sessionRef = useRef(null);
   const dummyDataARef = useRef(
     Float32Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
@@ -30,7 +30,10 @@ function App() {
   );
   const cancelledRef = useRef(false);
   const animationFrameRef = useRef(null);
+
   const [count, setCount] = useState(0);
+  const [inferenceTime, setInferenceTime] = useState(0);
+  const [memoryUsage, setMemoryUsage] = useState(0);
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -50,24 +53,26 @@ function App() {
           [4, 3]
         );
 
-        // Создание объекта feeds с именами входов модели
         const feeds = { a: tensorA, b: tensorB };
 
-        // Выполнение инференса
+        const start = performance.now();
         let results = await sessionRef.current.run(feeds);
-        for (const key in results) results[key] = null;
+        const end = performance.now();
 
+        for (const key in results) results[key] = null;
         results = null;
 
-        setCount((p) => p + 1);
-        logMemory();
+        const timeTaken = +(end - start).toFixed(2);
+        const memUsed = getMemoryUsage();
 
-        // ⏳ Добавим мягкую задержку
-        await sleep(200);
+        setCount((p) => p + 1);
+        setInferenceTime(timeTaken);
+        if (memUsed !== null) setMemoryUsage(memUsed);
       } catch (e) {
         console.error("Inference error:", e);
       }
 
+      await sleep(200);
       animationFrameRef.current = requestAnimationFrame(loop);
     }
 
@@ -86,7 +91,12 @@ function App() {
     };
   }, []);
 
-  return <p>Inference # {count}</p>;
+  return (
+    <div>
+      <p>ONNX LIGHT MODEL TEST</p>
+      <p>Inference #: {count}</p>
+      <p>Last Inference Time: {inferenceTime} ms</p>
+      <p>Used JS Heap: {memoryUsage} MB</p>
+    </div>
+  );
 }
-
-export default App;

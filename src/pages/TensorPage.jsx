@@ -81,6 +81,8 @@ export default function TensorPage() {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
+
+      modelRef.current.net.dispose();
       modelRef.current = null;
     };
   }, []);

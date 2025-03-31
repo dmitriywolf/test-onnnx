@@ -1,25 +1,39 @@
-import { Routes, Route, Link } from "react-router-dom";
+import { useState } from "react";
 import Home from "./pages/Home";
 import TensorPage from "./pages/TensorPage";
 import OnnxPage from "./pages/OnnxPage";
 import OnnxLightPage from "./pages/OnnxLightPage";
 
 function App() {
+  const [activeTab, setActiveTab] = useState("home");
+
+  const renderTab = () => {
+    switch (activeTab) {
+      case "home":
+        return <Home />;
+      case "tensor":
+        return <TensorPage />;
+      case "onnx":
+        return <OnnxPage />;
+      case "onnx-light":
+        return <OnnxLightPage />;
+      default:
+        return <Home />;
+    }
+  };
+
   return (
     <div>
       <nav style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
-        <Link to="/">Home</Link>
-        <Link to="/tensor">TensorFlow</Link>
-        <Link to="/onnx">ONNX</Link>
-        <Link to="/onnx-light">ONNX LIGHT FROM DOC</Link>
+        <button onClick={() => setActiveTab("home")}>Home</button>
+        <button onClick={() => setActiveTab("tensor")}>TensorFlow</button>
+        <button onClick={() => setActiveTab("onnx")}>ONNX</button>
+        <button onClick={() => setActiveTab("onnx-light")}>
+          ONNX LIGHT FROM DOC
+        </button>
       </nav>
 
-      <Routes>
-        <Route path="/test-onnnx/" element={<Home />} />
-        <Route path="/test-onnnx/tensor" element={<TensorPage />} />
-        <Route path="/test-onnnx/onnx" element={<OnnxPage />} />
-        <Route path="/test-onnnx/onnx-light" element={<OnnxLightPage />} />
-      </Routes>
+      <div>{renderTab()}</div>
     </div>
   );
 }

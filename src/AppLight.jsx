@@ -1,78 +1,92 @@
-import { useEffect, useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import * as ort from "onnxruntime-web";
 
+// Загрузка модели
+async function loadOnnxModel() {
+  return await ort.InferenceSession.create(
+    "https://dmitriywolf.github.io/test-onnnx/models/model.onnx",
+    { executionProviders: ["wasm"] }
+  );
+}
+
+// Пауза через промис
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Вывод JS Heap (Chrome)
+const logMemory = () => {
+  if (performance.memory) {
+    const used = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2);
+    console.log(`Used JS Heap: ${used} MB`);
+  }
+};
+
 function App() {
-  const [count, setCount] = useState(0);
+  const sessionRef = useRef(null);
+  const dummyDataARef = useRef(
+    Float32Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+  );
+  const dummyDataBRef = useRef(
+    Float32Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+  );
+  const cancelledRef = useRef(false);
   const animationFrameRef = useRef(null);
-  // Флаг, указывающий на то, что инференс выполняется
-  const isInferenceRunningRef = useRef(false);
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
-    let session = null;
+    cancelledRef.current = false;
 
-    async function loadModelAndStartAnimation() {
+    async function loop() {
+      if (cancelledRef.current || !sessionRef.current) return;
+
       try {
-        // Загрузка модели
-        session = await ort.InferenceSession.create("https://dmitriywolf.github.io/test-onnnx/models/model.onnx");
+        const tensorA = new ort.Tensor(
+          "float32",
+          dummyDataARef.current,
+          [3, 4]
+        );
+        const tensorB = new ort.Tensor(
+          "float32",
+          dummyDataBRef.current,
+          [4, 3]
+        );
 
-        // Функция, выполняющая инференс на каждом кадре
-        async function runFrame() {
-          // Если инференс уже выполняется, пропускаем этот кадр
-          if (isInferenceRunningRef.current) {
-            animationFrameRef.current = requestAnimationFrame(runFrame);
-            return;
-          }
-          isInferenceRunningRef.current = true;
+        // Создание объекта feeds с именами входов модели
+        const feeds = { a: tensorA, b: tensorB };
 
-          // Подготовка входных данных
-          const dataA = Float32Array.from([
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-          ]);
-          const dataB = Float32Array.from([
-            10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120,
-          ]);
-          const tensorA = new ort.Tensor("float32", dataA, [3, 4]);
-          const tensorB = new ort.Tensor("float32", dataB, [4, 3]);
+        // Выполнение инференса
+        let results = await sessionRef.current.run(feeds);
+        for (const key in results) results[key] = null;
 
-          // Создание объекта feeds с именами входов модели
-          const feeds = { a: tensorA, b: tensorB };
+        results = null;
 
-          try {
-            // Выполнение инференса
-            const results = await session.run(feeds);
-            const dataC = results.c.data;
-            console.log("DATA C", dataC);
-          } catch (e) {
-            console.error("Ошибка инференса:", e);
-          } finally {
-            // Сбрасываем флаг по окончании инференса
-            isInferenceRunningRef.current = false;
-          }
+        setCount((p) => p + 1);
+        logMemory();
 
-          // Обновление счетчика для отображения количества выполненных инференсов
-          setCount((prev) => prev + 1);
-
-          // Планируем выполнение на следующем кадре
-          animationFrameRef.current = requestAnimationFrame(runFrame);
-        }
-
-        runFrame();
-      } catch (err) {
-        console.error("[ONNX] Ошибка загрузки модели:", err);
+        // ⏳ Добавим мягкую задержку
+        await sleep(200);
+      } catch (e) {
+        console.error("Inference error:", e);
       }
+
+      animationFrameRef.current = requestAnimationFrame(loop);
     }
 
-    loadModelAndStartAnimation();
+    async function init() {
+      sessionRef.current = await loadOnnxModel();
+      if (!cancelledRef.current) loop();
+    }
 
-    // Очистка эффекта: отменяем планируемый кадр при размонтировании компонента
+    init();
+
     return () => {
-      if (animationFrameRef.current) {
+      cancelledRef.current = true;
+      if (animationFrameRef.current)
         cancelAnimationFrame(animationFrameRef.current);
-      }
+      sessionRef.current = null;
     };
   }, []);
 
-  return <p>Inference N {count}</p>;
+  return <p>Inference # {count}</p>;
 }
 
 export default App;

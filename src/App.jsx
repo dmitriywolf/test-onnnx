@@ -5,7 +5,7 @@ import * as ort from "onnxruntime-web";
 async function loadOnnxModel() {
   return await ort.InferenceSession.create(
     "https://dmitriywolf.github.io/test-onnnx/models/detector_documents_leyolo_n.onnx",
-    { executionProviders: ["webql", "wasm"] }
+    { executionProviders: ["wasm"] }
   );
 }
 

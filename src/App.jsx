@@ -15,10 +15,10 @@ function App() {
       </nav>
 
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/tensor" element={<TensorPage />} />
-        <Route path="/onnx" element={<OnnxPage />} />
-        <Route path="/onnx-light" element={<OnnxLightPage />} />
+        <Route path="/test-onnnx/" element={<Home />} />
+        <Route path="/test-onnnx/tensor" element={<TensorPage />} />
+        <Route path="/test-onnnx/onnx" element={<OnnxPage />} />
+        <Route path="/test-onnnx/onnx-light" element={<OnnxLightPage />} />
       </Routes>
     </div>
   );
